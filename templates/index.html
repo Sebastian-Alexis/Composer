@@ -3,7 +3,7 @@
 {% block content %}
 <div class="mt-10">
     <h1 class="text-6xl font-bold text-gray-800 font-serif text-center">Composer</h1>
-    <p class="text-lg italic text-gray-500 mt-4 text-center">Conducting your hackathon's emails</p>
+    <p class="text-lg italic text-gray-500 mt-4 text-center">The conductor to your orchestra of hackathon sponsorship emails. First, fetch a summary, then click generate email! Let composer do the rest.</p>
 </div>
 
 <div class="grid grid-cols-2 gap-6 mt-10 container mx-auto">
@@ -11,36 +11,101 @@
     <div class="p-6 rounded flex flex-col justify-between" style="background-color: #d8dee9;">
         <div>
             <h2 class="text-xl font-semibold mb-4" style="color: #1f2937;">Company Information</h2>
-            <input type="text" placeholder="Enter company name" 
-                class="input input-bordered w-full mb-2 placeholder:text-[#e5e7eb] bg-[#a6adba] text-black caret-black" />
-            <p class="text-center text-gray-600 italic">OR</p>
-            <input type="text" placeholder="Enter Wikipedia URL" 
-                class="input input-bordered w-full mt-2 placeholder:text-[#e5e7eb] bg-[#a6adba] text-black caret-black" />
+            <input type="text" id="wiki-url-input" placeholder="Enter Wikipedia URL" 
+                class="input input-bordered w-full mb-2 placeholder:text-[#1f2937] bg-[#e5e7eb] text-black caret-black" />
         </div>
-        <button class="btn mt-4 w-full text-white" style="background-color: #88c0d0; border-color: #88c0d0;">Fetch Summary</button>
+        <button id="fetch-summary-button" class="btn mt-4 w-full text-white" style="background-color: #88c0d0; border-color: #88c0d0;">
+            Fetch Summary
+        </button>
     </div>
 
     <div class="p-6 rounded flex flex-col justify-between" style="background-color: #d8dee9;">
         <div>
             <h2 class="text-xl font-semibold mb-4" style="color: #1f2937;">Email Template</h2>
-            <textarea placeholder="Enter your email template here" 
-                class="textarea textarea-bordered w-full h-32 placeholder:text-[#e5e7eb] bg-[#a6adba] text-black caret-black"></textarea>
+            <textarea id="email-template-input" placeholder="Enter your email template here" 
+                class="textarea textarea-bordered w-full h-32 placeholder:text-[#1f2937] bg-[#e5e7eb] text-black caret-black"></textarea>
         </div>
-        <button class="btn mt-4 w-full text-white" style="background-color: #88c0d0; border-color: #88c0d0;">Generate Email</button>
+        <button id="generate-email-button" class="btn mt-4 w-full text-white" style="background-color: #88c0d0; border-color: #88c0d0;">
+            Generate Email
+        </button>
     </div>
 
     <!-- Right Column: Outputs -->
     <div class="p-6 rounded" style="background-color: #d8dee9;">
         <h2 class="text-xl font-semibold mb-4" style="color: #1f2937;">Company Summary</h2>
-        <div class="p-4 rounded h-32 overflow-y-auto" style="background-color: #f0f4f8;">
-            <p class="text-gray-700">The company summary will appear here...</p>
+        <div id="summary-output" class="p-4 rounded bg-[#f0f4f8] h-32 overflow-y-auto">
+            The company summary will appear here...
         </div>
     </div>
     <div class="p-6 rounded" style="background-color: #d8dee9;">
         <h2 class="text-xl font-semibold mb-4" style="color: #1f2937;">Generated Email</h2>
-        <div class="p-4 rounded h-32 overflow-y-auto" style="background-color: #f0f4f8;">
-            <p class="text-gray-700">The generated email will appear here...</p>
+        <div id="email-output" class="p-4 rounded bg-[#f0f4f8] h-32 overflow-y-auto">
+            The generated email will appear here...
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const fetchButton = document.querySelector("#fetch-summary-button");
+        const generateButton = document.querySelector("#generate-email-button");
+        const wikiInput = document.querySelector("#wiki-url-input");
+        const summaryOutput = document.querySelector("#summary-output");
+        const emailTemplate = document.querySelector("#email-template-input");
+        const emailOutput = document.querySelector("#email-output");
+
+        // Fetch Summary Button Functionality
+        fetchButton.addEventListener("click", async () => {
+            const wikipediaUrl = wikiInput.value.trim();
+            if (!wikipediaUrl) {
+                summaryOutput.textContent = "Please enter a Wikipedia URL.";
+                return;
+            }
+
+            try {
+                const response = await fetch("/scrape", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ wikipedia_url: wikipediaUrl }),
+                });
+
+                const result = await response.json();
+                if (result.error) {
+                    summaryOutput.textContent = `Error: ${result.error}`;
+                } else {
+                    summaryOutput.textContent = result.summary || "Summary not available.";
+                }
+            } catch (err) {
+                summaryOutput.textContent = `Error: ${err.message}`;
+            }
+        });
+
+        // Generate Email Button Functionality
+        generateButton.addEventListener("click", async () => {
+            const template = emailTemplate.value.trim();
+            const summary = summaryOutput.textContent.trim();
+            if (!template || !summary) {
+                emailOutput.textContent = "Please provide both an email template and a company summary.";
+                return;
+            }
+
+            try {
+                const response = await fetch("/generate-email", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ template: template, company_summary: summary }),
+                });
+
+                const result = await response.json();
+                emailOutput.textContent = result.email || "Error generating email.";
+            } catch (err) {
+                emailOutput.textContent = `Error: ${err.message}`;
+            }
+        });
+    });
+</script>
 {% endblock %}
